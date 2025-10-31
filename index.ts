@@ -25,7 +25,21 @@ app.post('/upload', upload.single('pdf'), (req, res) => {
 });
 
 app.get('/download/:filename', (req, res) => {
-  const filePath = path.join(process.cwd(), 'uploads', req.params.filename);
+  // Sanitize filename to prevent path traversal attacks
+  const sanitizedFilename = path.basename(req.params.filename);
+  const uploadsDir = path.join(process.cwd(), 'uploads');
+  const filePath = path.join(uploadsDir, sanitizedFilename);
+  
+  // Verify the file exists and is within the uploads directory
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).send('File not found');
+  }
+  
+  const realPath = fs.realpathSync(filePath);
+  if (!realPath.startsWith(uploadsDir)) {
+    return res.status(403).send('Access denied');
+  }
+  
   const fileStream = fs.createReadStream(filePath);
   fileStream.on('error', () => {
     res.status(404).send('File not found');
