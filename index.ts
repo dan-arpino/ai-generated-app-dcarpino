@@ -2,8 +2,12 @@ import express from 'express';
 import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
+import rateLimit from 'express-rate-limit';
 
 export const app = express();
+
+// Disable X-Powered-By header for security
+app.disable('x-powered-by');
 const upload = multer({
   dest: 'uploads/',
   fileFilter: (req, file, cb) => {
@@ -17,6 +21,15 @@ const upload = multer({
 
 app.use(express.static('public'));
 
+// Rate limiter for download endpoint to prevent resource exhaustion
+const downloadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: 'Too many download requests, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 app.post('/upload', upload.single('pdf'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded.' });
@@ -24,7 +37,7 @@ app.post('/upload', upload.single('pdf'), (req, res) => {
   res.json({ message: 'File uploaded successfully', filename: req.file.filename });
 });
 
-app.get('/download/:filename', (req, res) => {
+app.get('/download/:filename', downloadLimiter, (req, res) => {
   // Sanitize filename to prevent path traversal attacks
   const sanitizedFilename = path.basename(req.params.filename);
   const uploadsDir = path.join(process.cwd(), 'uploads');
