@@ -43,7 +43,8 @@ describe('PDF Upload/Download', () => {
       .attach('pdf', testPdfPath);
 
     expect(uploadRes.statusCode).toBe(200);
-    expect(uploadRes.text).toContain('File uploaded');
+    expect(uploadRes.body.message).toContain('File uploaded successfully');
+    expect(uploadRes.body.filename).toBeDefined();
 
     const files = fs.readdirSync(uploadDir);
     const filename = files[0];
@@ -68,7 +69,7 @@ describe('PDF Upload/Download', () => {
       .post('/upload')
       .attach('pdf', testJpgPath);
     expect(res.statusCode).toBe(400);
-    expect(res.text).toBe('No file uploaded.');
+    expect(res.body.error).toBe('No file uploaded.');
   });
 
   it('should return 404 for a non-existing PDF file', async () => {
